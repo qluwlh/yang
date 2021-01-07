@@ -8,9 +8,9 @@ const filePath = path.resolve(os.homedir(), 'Documents', 'yang')
 const excelFilename = `${filePath}/demo-${moment().format('YYYY-MM-DD_HH:mm')}.xlsx`
 
 const types = {
-  A0: '初稿',
-  L0: '上会搞',
-  D0: '终稿',
+  A0: { key: 'A0', value: '初稿' },
+  L0: { key: 'L0', value: '上会搞' },
+  D0: { key: 'D0', value: '终稿' },
 }
 
 const options = {
@@ -58,8 +58,8 @@ const run = async () => {
               const fileIds = storeLocation.split(',')
               const fileTypes = versionType.split(',')
               const files = fileTypes.map((item, index) => ({ type: item, fileId: fileIds[index] }))
-              const firstDraft = files.find((item) => item.type === types.A0)
-              const finalDraft = files.find((item) => item.type === types.D0)
+              const firstDraft = files.find((item) => item.type === types.A0.key)
+              const finalDraft = files.find((item) => item.type === types.D0.key)
               if (firstDraft) {
                 row.firstDraft = JSON.stringify({
                   url: 'http://zhuce.nafmii.org.cn/file_web/file/download',

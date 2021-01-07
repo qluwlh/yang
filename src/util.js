@@ -87,7 +87,7 @@ export const listFeedBackGrid = (instNo, projTrackNo) => {
     })
     .then((response) => {
       if (response.status === 200 && response.data && response.data.rows) {
-        return response.data
+        return { rows: response.data.rows }
       } else {
         console.log(`反馈意见及回复接口data获取失败--instNo: ${instNo},projTrackNo: ${projTrackNo}`)
         return { rows: [] }
@@ -113,7 +113,7 @@ export const listPublicViewDataGrid = (instNo, projTrackNo) => {
     })
     .then((response) => {
       if (response.status === 200 && response.data && response.data.rows) {
-        return response.data
+        return { rows: response.data.rows }
       } else {
         console.log(`公开披露文件data获取失败--instNo: ${instNo},projTrackNo: ${projTrackNo}`)
         return { rows: [] }
