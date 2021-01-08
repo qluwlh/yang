@@ -5,7 +5,7 @@ import path from 'path'
 import { awaitTime, createDirectory, getData, getInitData, handleData, handleFeedBackDataGrids, handlePublicViewDataGrids } from './util'
 
 const filePath = path.resolve(os.homedir(), 'Documents', 'yang')
-const excelFilename = `${filePath}/demo-${moment().format('YYYY-MM-DD_HH:mm')}.xlsx`
+const excelFilename = `${filePath}/${moment().format(`MM月DD日_HH'mm'SS'`)}.xlsx`
 
 const options = {
   filename: excelFilename,
@@ -31,14 +31,14 @@ const run = async () => {
   if (!result) {
     throw new Error(`文件创建失败：${filePath}`)
   }
-  const pageSize = 20
+  const pageSize = 200
   const pageCount = Math.ceil(total / pageSize)
   console.log(`共${pageCount}页`)
   const workbook = new Excel.stream.xlsx.WorkbookWriter(options)
   const worksheet = workbook.addWorksheet('First')
   worksheet.columns = columns
-  for (let index = 0; index < 1; index++) {
-    console.log(`当前第${index + 1}页：${moment().format('YYYY-MM-DD__HH-mm-SS')}`)
+  for (let index = 0; index < pageCount; index++) {
+    console.log(`当前第${index + 1}页：${moment().format(`MM月DD日_HH'mm'SS'`)}`)
     await awaitTime(1000)
     const rows = await getData(index + 1, pageSize)
     const data = handleData(rows)
