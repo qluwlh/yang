@@ -2,16 +2,10 @@ import Excel from 'exceljs'
 import moment from 'moment'
 import os from 'os'
 import path from 'path'
-import { awaitTime, createDirectory, getData, getInitData, handleData, listFeedBackGrid, listPublicViewDataGrid } from './util'
+import { awaitTime, createDirectory, getData, getInitData, handleData, handleFeedBackDataGrids, handlePublicViewDataGrids } from './util'
+
 const filePath = path.resolve(os.homedir(), 'Documents', 'yang')
-
 const excelFilename = `${filePath}/demo-${moment().format('YYYY-MM-DD_HH:mm')}.xlsx`
-
-const types = {
-  A0: { key: 'A0', value: '初稿' },
-  L0: { key: 'L0', value: '上会搞' },
-  D0: { key: 'D0', value: '终稿' },
-}
 
 const options = {
   filename: excelFilename,
@@ -39,72 +33,32 @@ const run = async () => {
   }
   const pageSize = 20
   const pageCount = Math.ceil(total / pageSize)
+  console.log(`共${pageCount}页`)
   const workbook = new Excel.stream.xlsx.WorkbookWriter(options)
   const worksheet = workbook.addWorksheet('First')
   worksheet.columns = columns
   for (let index = 0; index < 1; index++) {
+    console.log(`当前第${index + 1}页：${moment().format('YYYY-MM-DD__HH-mm-SS')}`)
     await awaitTime(1000)
     const rows = await getData(index + 1, pageSize)
     const data = handleData(rows)
+    data && data.length > 0 && console.log('<---------page.data.length: ', data.length)
     for (const currentData of data) {
       const row = currentData
-      const publicViewDataGrids = await listPublicViewDataGrid(currentData.instNo, currentData.projTrackNo)
-      if (publicViewDataGrids && publicViewDataGrids.length > 0) {
-        const prospectus = publicViewDataGrids.filter(({ fileName }) => /募集说明书/.test(fileName))
-        if (prospectus && prospectus.length > 0) {
-          for (const item of prospectus) {
-            const { storeLocation, fileName, versionType } = item
-            if (storeLocation) {
-              const fileIds = storeLocation.split(',')
-              const fileTypes = versionType.split(',')
-              const files = fileTypes.map((item, index) => ({ type: item, fileId: fileIds[index] }))
-              const firstDraft = files.find((item) => item.type === types.A0.key)
-              const finalDraft = files.find((item) => item.type === types.D0.key)
-              if (firstDraft) {
-                row.firstDraft = JSON.stringify({
-                  url: 'http://zhuce.nafmii.org.cn/file_web/file/download',
-                  opt: { params: { bo: { fileName, fileId: firstDraft.fileId } } },
-                })
-              }
-              if (finalDraft) {
-                row.finalDraft = JSON.stringify({
-                  url: 'http://zhuce.nafmii.org.cn/file_web/file/download',
-                  opt: { params: { bo: { fileName, fileId: finalDraft.fileId } } },
-                })
-              }
-            }
-            //  await downFile('http://zhuce.nafmii.org.cn/file_web/file/download',filePath,fileName,fileIds[0])
-          }
-        }
-        const registrationStatement = publicViewDataGrids.filter(({ fileName }) => /注册报告/.test(fileName))
-      }
-      const feedBackDataGrids = await listFeedBackGrid(currentData.instNo, currentData.projTrackNo)
-      if (feedBackDataGrids && feedBackDataGrids.length > 0) {
-        const [inquiryLetter, replyLetter] = feedBackDataGrids
-        if (inquiryLetter) {
-          row.inquiryLetter = JSON.stringify({
-            url: 'http://zhuce.nafmii.org.cn/file_web/file/download',
-            opt: { params: { bo: { fileName: inquiryLetter.fileName, fileId: inquiryLetter.storeLocation } } },
-          })
-        }
-        if (replyLetter) {
-          row.replyLetter = JSON.stringify({
-            url: 'http://zhuce.nafmii.org.cn/file_web/file/download',
-            opt: { params: { bo: { fileName: replyLetter.fileName, fileId: replyLetter.storeLocation } } },
-          })
-        }
-      }
+      const { firstDraft = '', finalDraft = '' } = await handlePublicViewDataGrids(currentData.instNo, currentData.projTrackNo)
+      row.firstDraft = firstDraft
+      row.finalDraft = finalDraft
+      const { inquiryLetter = '', replyLetter = '' } = await handleFeedBackDataGrids(currentData.instNo, currentData.projTrackNo)
+      row.inquiryLetter = inquiryLetter
+      row.replyLetter = replyLetter
       worksheet.addRow(row).commit()
     }
   }
   worksheet.commit()
-  const res = await workbook.commit()
+  await workbook.commit()
 }
 run()
   .then(() => {
     console.log('success')
   })
   .catch(console.log)
-
-// const currentPath = path.resolve(os.homedir(),'Documents','yang')
-// createDirectory(currentPath).then(console.log).catch(console.log)
