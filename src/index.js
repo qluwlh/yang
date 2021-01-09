@@ -6,7 +6,7 @@ import { createDirectory, downFile, getData, getInitData, handleData, handleFeed
 
 const allowDownloadFile = true
 
-const filePath = path.resolve(os.homedir(), 'Documents', 'yang')
+const filePath = path.resolve(os.homedir(), 'Documents', 'yang-files')
 const excelFilename = `${filePath}/${moment().format(`MM月DD日_HH'mm'SS'`)}.xlsx`
 
 const options = {

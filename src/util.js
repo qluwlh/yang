@@ -6,10 +6,10 @@ const axios = require('axios')
 
 export const types = {
   A0: { key: 'A0', value: '初稿' },
-  L0: { key: 'L0', value: '上会搞' },
+  L0: { key: 'L0', value: '上会稿' },
   D0: { key: 'D0', value: '终稿' },
 }
-export const defaultFilePath = path.resolve(os.homedir(), 'Documents', 'yang')
+export const defaultFilePath = path.resolve(os.homedir(), 'Documents', 'yang-files')
 
 export const awaitTime = (times = 2000) => {
   return new Promise((resolve, reject) => {
