@@ -2,7 +2,9 @@ import Excel from 'exceljs'
 import moment from 'moment'
 import os from 'os'
 import path from 'path'
-import { awaitTime, createDirectory, getData, getInitData, handleData, handleFeedBackDataGrids, handlePublicViewDataGrids } from './util'
+import { createDirectory, downFile, getData, getInitData, handleData, handleFeedBackDataGrids, handlePublicViewDataGrids } from './util'
+
+const allowDownloadFile = true
 
 const filePath = path.resolve(os.homedir(), 'Documents', 'yang')
 const excelFilename = `${filePath}/${moment().format(`MM月DD日_HH'mm'SS'`)}.xlsx`
@@ -18,11 +20,9 @@ const columns = [
   { header: '更新日期', key: 'releaseTime', width: 30 },
   { header: 'projTrackNo', key: 'projTrackNo', width: 40 },
   { header: '注册通知书文号', key: 'regNoticeNo', width: 30 },
-  { header: '初稿', key: 'firstDraft', width: 30 },
-  { header: '终稿', key: 'finalDraft', width: 30 },
-  { header: '注册报告', key: 'registrationStatement', width: 30 },
-  { header: '问询函', key: 'inquiryLetter', width: 30 },
-  { header: '回函', key: 'replyLetter', width: 30 },
+  { header: '募集说明', key: 'prospectus', width: 30 },
+  { header: '注册报告', key: 'registrationStatements', width: 30 },
+  { header: '函', key: 'letter', width: 30 },
 ]
 const run = async () => {
   const initData = await getInitData()
@@ -39,18 +39,27 @@ const run = async () => {
   worksheet.columns = columns
   for (let index = 0; index < pageCount; index++) {
     console.log(`当前第${index + 1}页：${moment().format(`MM月DD日_HH'mm'SS'`)}`)
-    await awaitTime(1000)
     const rows = await getData(index + 1, pageSize)
     const data = handleData(rows)
-    data && data.length > 0 && console.log('<---------page.data.length: ', data.length)
+    console.log('<---------page.data.length: ', data && data.length)
     for (const currentData of data) {
       const row = currentData
-      const { firstDraft = '', finalDraft = '' } = await handlePublicViewDataGrids(currentData.instNo, currentData.projTrackNo)
-      row.firstDraft = firstDraft
-      row.finalDraft = finalDraft
-      const { inquiryLetter = '', replyLetter = '' } = await handleFeedBackDataGrids(currentData.instNo, currentData.projTrackNo)
-      row.inquiryLetter = inquiryLetter
-      row.replyLetter = replyLetter
+      const downloadUrl = 'http://zhuce.nafmii.org.cn/file_web/file/download'
+      const downloadPath = `${filePath}/files/${currentData.instNo}`
+      const { prospectus, registrationStatements } = await handlePublicViewDataGrids(currentData.instNo, currentData.projTrackNo)
+      row.prospectus = JSON.stringify(prospectus)
+      row.registrationStatements = JSON.stringify(registrationStatements)
+      allowDownloadFile &&
+        (await Promise.allSettled(
+          [...prospectus, ...registrationStatements]
+            .map(({ files }) => files)
+            .flatMap((item) => item)
+            .map((file) => downFile(downloadUrl, file.bo, downloadPath, file.saveFileName))
+        ))
+      const letters = await handleFeedBackDataGrids(currentData.instNo, currentData.projTrackNo)
+      row.letter = JSON.stringify(letters)
+      allowDownloadFile &&
+        (await Promise.allSettled(letters.map((file) => downFile(downloadUrl, file.bo, downloadPath, file.saveFileName))))
       worksheet.addRow(row).commit()
     }
   }

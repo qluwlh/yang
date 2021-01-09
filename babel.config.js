@@ -1,10 +1,7 @@
-const developmentEnvironments = [
-  'development',
-  'test'
-];
+const developmentEnvironments = ['development', 'test']
 
-module.exports = api => {
-  const development = api.env(developmentEnvironments);
+module.exports = (api) => {
+  const development = api.env(developmentEnvironments)
 
   return {
     ignore: [],
@@ -13,17 +10,13 @@ module.exports = api => {
         require('@babel/preset-env'),
         {
           targets: {
-            node: '10.15'
+            node: '14.15.3',
           },
           useBuiltIns: false,
-          debug: !!development
-        }
-      ]
+          debug: !!development,
+        },
+      ],
     ],
-    plugins: [
-      [
-        require("@babel/plugin-proposal-class-properties")
-      ]
-    ]
-  };
-};
+    plugins: [[require('@babel/plugin-proposal-class-properties')]],
+  }
+}

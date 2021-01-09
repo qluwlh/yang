@@ -1,14 +1,15 @@
 const util = require('util')
 const fs = require('fs')
+const path = require('path')
+const os = require('os')
 const axios = require('axios')
-export const access = util.promisify(fs.access)
-export const mkdir = util.promisify(fs.mkdir)
 
 export const types = {
   A0: { key: 'A0', value: '初稿' },
   L0: { key: 'L0', value: '上会搞' },
   D0: { key: 'D0', value: '终稿' },
 }
+export const defaultFilePath = path.resolve(os.homedir(), 'Documents', 'yang')
 
 export const awaitTime = (times = 2000) => {
   return new Promise((resolve, reject) => {
@@ -18,16 +19,21 @@ export const awaitTime = (times = 2000) => {
   })
 }
 
-export const downFile = (url, filePath, fileName, fileId) => {
+export const downFile = async (url, bo, savePath, saveName) => {
   return axios
-    .get(url, { params: { bo: { fileName, fileId } }, responseType: 'stream' })
-    .then((res) => {
-      const writer = fs.createWriteStream(path.resolve(filePath, fileName))
+    .get(url, { params: { bo }, responseType: 'stream' })
+    .then(async (res) => {
+      const result = await createDirectory(savePath)
+      if (!result) {
+        console.log(`文件创建失败：${savePath}`)
+      }
+      const currentPath = result ? savePath : defaultFilePath
+      const writer = fs.createWriteStream(path.resolve(currentPath, saveName))
       res.data.pipe(writer)
-      console.log(`✅ ${fileName},  ✌️ 位置：${path.resolve(filePath)}`)
+      console.log(`✅ ${saveName},  ✌️ 位置：${path.resolve(currentPath)}`)
     })
     .catch((e) => {
-      console.log(`❌ ${fileName} 下载失败, 错误：${e}`)
+      console.log(`❌ ${saveName} 下载失败, 错误：${e}`)
     })
 }
 
@@ -152,56 +158,48 @@ export const getInitData = async () => {
 
 export async function handleFeedBackDataGrids(instNo, projTrackNo) {
   const feedBackDataGrids = await listFeedBackGrid(instNo, projTrackNo)
-  const result = {}
   if (feedBackDataGrids && feedBackDataGrids.length > 0) {
-    const [inquiryLetter, replyLetter] = feedBackDataGrids
-    if (inquiryLetter) {
-      result.inquiryLetter = JSON.stringify({
-        url: 'http://zhuce.nafmii.org.cn/file_web/file/download',
-        opt: { params: { bo: { fileName: inquiryLetter.fileName, fileId: inquiryLetter.storeLocation } } },
-      })
-    }
-    if (replyLetter) {
-      result.replyLetter = JSON.stringify({
-        url: 'http://zhuce.nafmii.org.cn/file_web/file/download',
-        opt: { params: { bo: { fileName: inquiryLetter.fileName, fileId: inquiryLetter.storeLocation } } },
-      })
-    }
+    return feedBackDataGrids.map((item) => ({
+      saveFileName: item.fileName,
+      bo: {
+        fileName: item.fileName,
+        fileId: item.storeLocation,
+      },
+    }))
   }
-  return result
+  return []
 }
-
+const matchStoreLocationAndVersionType = (filter = undefined) => (item) => {
+  const { storeLocation, versionType, fileName } = item
+  if (storeLocation && versionType && fileName) {
+    const fileIds = storeLocation.split(',')
+    const fileTypes = versionType.split(',')
+    const files = fileTypes
+      .map((type, index) => ({
+        type,
+        typeName: types[type].value,
+        bo: { fileId: fileIds[index], fileName },
+        saveFileName: `${types[type].value}-${fileName}}`,
+      }))
+      .filter((item) => !filter || filter(item))
+    return { ...item, files }
+  }
+  return { ...item, files: [] }
+}
 export async function handlePublicViewDataGrids(instNo, projTrackNo) {
   const publicViewDataGrids = await listPublicViewDataGrid(instNo, projTrackNo)
-  const result = {}
   if (publicViewDataGrids && publicViewDataGrids.length > 0) {
-    const prospectus = publicViewDataGrids.filter(({ fileName }) => /募集说明书/.test(fileName))
-    if (prospectus && prospectus.length > 0) {
-      for (const item of prospectus) {
-        const { storeLocation, fileName, versionType } = item
-        if (storeLocation) {
-          const fileIds = storeLocation.split(',')
-          const fileTypes = versionType.split(',')
-          const files = fileTypes.map((item, index) => ({ type: item, fileId: fileIds[index] }))
-          const firstDraft = files.find((item) => item.type === types.A0.key)
-          const finalDraft = files.find((item) => item.type === types.D0.key)
-          if (firstDraft) {
-            result.firstDraft = JSON.stringify({
-              url: 'http://zhuce.nafmii.org.cn/file_web/file/download',
-              opt: { params: { bo: { fileName, fileId: firstDraft.fileId } } },
-            })
-          }
-          if (finalDraft) {
-            result.finalDraft = JSON.stringify({
-              url: 'http://zhuce.nafmii.org.cn/file_web/file/download',
-              opt: { params: { bo: { fileName, fileId: finalDraft.fileId } } },
-            })
-          }
-        }
-        //  await downFile('http://zhuce.nafmii.org.cn/file_web/file/download',filePath,fileName,fileIds[0])
-      }
+    return {
+      prospectus: publicViewDataGrids
+        .filter(({ fileName }) => /募集说明书/.test(fileName))
+        .map(matchStoreLocationAndVersionType(({ type }) => [types.A0.key, types.D0.key].includes(type))),
+      registrationStatements: publicViewDataGrids
+        .filter(({ fileName }) => /注册报告/.test(fileName))
+        .map(matchStoreLocationAndVersionType()),
     }
-    const registrationStatement = publicViewDataGrids.filter(({ fileName }) => /注册报告/.test(fileName))
   }
-  return result
+  return {
+    registrationStatements: [],
+    prospectus: [],
+  }
 }
