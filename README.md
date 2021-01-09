@@ -9,7 +9,7 @@
 cmd + 空格键 打开搜索terminal，并打开，如下图
 ```
 ![avatar](./public/1610188431991_B8C6E0C7-B473-4694-A1C2-23BF5DC18460.png)
-##执行脚本
+## 执行脚本
 依次输入执行
 ```shell
 cd Documents/yang-main/
