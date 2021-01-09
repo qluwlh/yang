@@ -33,7 +33,7 @@ const run = async () => {
   }
   const pageSize = 200
   const pageCount = Math.ceil(total / pageSize)
-  console.log(`共${pageCount}页`)
+  console.log(`共${pageCount}页，每页${pageSize}条数据`)
   const workbook = new Excel.stream.xlsx.WorkbookWriter(options)
   const worksheet = workbook.addWorksheet('First')
   worksheet.columns = columns
